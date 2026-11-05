@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -35,6 +36,16 @@ type Server struct {
 }
 
 func New(svc *Service, addr string) (*Server, error) {
+	baseURL := strings.TrimRight(os.Getenv("GOOGLE_MAPS_BASE_URL"), "/")
+	basePath := ""
+	if baseURL != "" {
+		parsed, err := url.Parse(baseURL)
+		if err != nil || parsed.Host == "" || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.User != nil {
+			return nil, fmt.Errorf("GOOGLE_MAPS_BASE_URL must be an absolute HTTP(S) URL without credentials, query or fragment")
+		}
+		basePath = parsed.Path
+	}
+	appURL := func(p string) string { return basePath + p }
 	ans := Server{
 		svc:  svc,
 		tmpl: make(map[string]*template.Template),
@@ -57,6 +68,21 @@ func New(svc *Service, addr string) (*Server, error) {
 	mux := http.NewServeMux()
 
 	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
+	mux.HandleFunc("/static/spec/spec.yaml", func(w http.ResponseWriter, r *http.Request) {
+		data, err := static.ReadFile("static/spec/spec.yaml")
+		if err != nil {
+			http.Error(w, "missing API specification", http.StatusInternalServerError)
+			return
+		}
+		spec := string(data)
+		if baseURL != "" {
+			encodedURL, _ := json.Marshal(baseURL)
+			spec = strings.Replace(spec, "\npaths:", "\nservers:\n  - url: "+string(encodedURL)+"\n\npaths:", 1)
+			spec = strings.ReplaceAll(spec, "http://localhost:8080", baseURL)
+		}
+		w.Header().Set("Content-Type", "application/yaml; charset=utf-8")
+		_, _ = io.WriteString(w, spec)
+	})
 	mux.HandleFunc("/scrape", ans.scrape)
 	mux.HandleFunc("/download", func(w http.ResponseWriter, r *http.Request) {
 		r = requestWithID(r)
@@ -130,6 +156,25 @@ func New(svc *Service, addr string) (*Server, error) {
 	})
 
 	handler := securityHeaders(mux)
+	if basePath != "" {
+		prefixed := http.StripPrefix(basePath, handler)
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == basePath {
+				target := basePath + "/"
+				if r.URL.RawQuery != "" {
+					target += "?" + r.URL.RawQuery
+				}
+				http.Redirect(w, r, target, http.StatusPermanentRedirect)
+				return
+			}
+			if strings.HasPrefix(r.URL.Path, basePath+"/") {
+				prefixed.ServeHTTP(w, r)
+				return
+			}
+			// Preserve direct internal requests during a rolling gateway update.
+			securityHeaders(mux).ServeHTTP(w, r)
+		})
+	}
 	ans.srv.Handler = handler
 
 	tmplsKeys := []string{
@@ -141,7 +186,7 @@ func New(svc *Service, addr string) (*Server, error) {
 	}
 
 	for _, key := range tmplsKeys {
-		tmp, err := template.ParseFS(static, key)
+		tmp, err := template.New(filepath.Base(key)).Funcs(template.FuncMap{"appURL": appURL}).ParseFS(static, key)
 		if err != nil {
 			return nil, err
 		}

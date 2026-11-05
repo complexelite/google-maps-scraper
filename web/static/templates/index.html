@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Maps Scraper</title>
-    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="{{appURL "/static/css/main.css"}}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/1.9.6/htmx.min.js"></script>
 </head>
 <body>
@@ -12,7 +12,7 @@
         <header>
             <h1>Google Maps Scraper</h1>
             <nav>
-                <a href="/api/docs" target="_blank" rel="noopener noreferrer">API Documentation</a>
+                <a href="{{appURL "/api/docs"}}" target="_blank" rel="noopener noreferrer">API Documentation</a>
             </nav>
             <div class="github-section">
                 <p>If you find this tool useful, please consider starring our repository: </p>
@@ -40,15 +40,15 @@
         <main>
             <div class="sidebar">
                 <div id="error-container" class="error-message"></div>
-                <form 
-                    hx-post="/scrape" 
+                <form
+                    hx-post="{{appURL "/scrape"}}"
                     hx-target="#job-tbody"
                     hx-swap="outerHTML"
                     hx-indicator="#spinner"
                     hx-on::before-request="document.getElementById('error-container').innerHTML = ''"
                     hx-on::after-request="if(!event.detail.successful) document.getElementById('error-container').innerHTML = event.detail.xhr.responseText"
                 >
-                    
+
                     <fieldset>
                         <legend>Job Details</legend>
                         <div class="form-group">
@@ -64,7 +64,7 @@
                             <input type="text" id="lang" name="lang" value="{{.Language}}">
                         </div>
                     </fieldset>
-                    
+
                     <details class="expandable-section">
                         <summary>Location Settings</summary>
                         <fieldset>
@@ -82,7 +82,7 @@
                             </div>
                         </fieldset>
                     </details>
-                    
+
                     <details class="expandable-section">
                         <summary>Advanced Options</summary>
                         <fieldset>
@@ -123,7 +123,7 @@
                             </div>
                         </fieldset>
                     </details>
-                    
+
                     <button type="submit">Start Scraping</button>
                 </form>
             </div>
@@ -139,7 +139,7 @@
                             <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="job-tbody" hx-get="/jobs" hx-trigger="load" hx-swap="outerHTML">
+                    <tbody id="job-tbody" hx-get="{{appURL "/jobs"}}" hx-trigger="load" hx-swap="outerHTML">
                         <!-- Job rows will be inserted here by HTMX -->
                     </tbody>
                 </table>
