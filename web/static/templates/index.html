@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Keep table sections intact when HTMX swaps tbody plus pagination fragments. -->
+    <meta name="htmx-config" content='{"useTemplateFragments":true}'>
     <title>Google Maps Scraper</title>
     <link rel="stylesheet" href="{{appURL "/static/css/main.css"}}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/1.9.6/htmx.min.js"></script>
@@ -39,14 +41,15 @@
         </header>
         <main>
             <div class="sidebar">
-                <div id="error-container" class="error-message"></div>
+                <div id="error-container" class="error-message" role="alert"></div>
+                <p id="submission-status" role="status" aria-live="polite"></p>
                 <form
                     hx-post="{{appURL "/scrape"}}"
                     hx-target="#job-tbody"
                     hx-swap="outerHTML"
                     hx-indicator="#spinner"
-                    hx-on::before-request="document.getElementById('error-container').innerHTML = ''"
-                    hx-on::after-request="if(!event.detail.successful) document.getElementById('error-container').innerHTML = event.detail.xhr.responseText"
+                    hx-on::before-request="document.getElementById('error-container').textContent = ''; document.getElementById('submission-status').textContent = 'Submitting scraping job…'"
+                    hx-on::after-request="document.getElementById('submission-status').textContent = event.detail.successful ? 'Job submitted. Follow its progress in the job list.' : ''; if(!event.detail.successful) document.getElementById('error-container').textContent = event.detail.xhr.responseText || 'The request could not be completed. Check your connection and sign in again if needed.'"
                 >
 
                     <fieldset>
