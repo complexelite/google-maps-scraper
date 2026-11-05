@@ -898,3 +898,9 @@ Please use this scraper responsibly and in accordance with applicable laws and r
 <p align="center">
   <sub><strong>SPONSOR DISCLAIMER:</strong> Sponsor listings and referral links do not constitute an endorsement. This project and its maintainers are not responsible for sponsors' products, services, representations, conduct, or any resulting loss or damage. Users engage with sponsors at their own risk.</sub>
 </p>
+# Hosting under a URL prefix
+
+Set `GOOGLE_MAPS_BASE_URL=https://tools.complexelite.com/google-maps-scraper` for the Tools deployment. The web server accepts the full prefix and generates prefixed links for pages, assets, forms, polling, downloads and docs. The OpenAPI specification advertises this server URL and uses it in code samples. Reverse proxies should preserve the request path. Without this setting, standalone root hosting continues to work.
+
+The Tools Swarm image is built with `Dockerfile.tools`, retaining the installed Chromium runtime. The Tools gateway redirects old root scraper URLs to their prefixed equivalents.
+

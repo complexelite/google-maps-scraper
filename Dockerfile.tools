@@ -1,0 +1,10 @@
+# Preserve the installed browser runtime while rebuilding the application source.
+FROM golang:1.27.1-trixie AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -ldflags="-w -s" -o /usr/bin/google-maps-scraper
+
+FROM complexelite/google-maps-scraper:903b96d
+COPY --from=builder /usr/bin/google-maps-scraper /usr/bin/google-maps-scraper
